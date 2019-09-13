@@ -10,7 +10,8 @@ def pos_exp_net(img1,img2,img3,explain=True,is_training=True):
     This function creates the graph for the pose and explainability networks
 
     input:  3 consecutive frames, whether or not is training
-    output: The mask of objects to ignore and the pose 6 Degrees of freedom (DoF)
+    output: The mask of objects to ignore and the pose 6 Degrees of
+            freedom (DoF) plus all the layers
     """
     imgs = tf.concat([img1,img2,img3],axis=3)
     H = inputs.get_shape()[1].value
@@ -43,6 +44,39 @@ def pos_exp_net(img1,img2,img3,explain=True,is_training=True):
                 pose_pred = slim.conv2d(conv7, 6*num_source , [1,1], stride=1,
                         normalizer_fn=None, activation_fn=None, scope='pose_pred')
                 pose_avg  = tf.reduce_mean(pose_pred,[1,2])
+
+                # Empirically the authors found that scaling by a small constant
+                # facilitates training.
+                pose_final = 0.01 * tf.reshape(pose_avg, [-1, num_source, 6])
+
+            # Exp mask specific layers
+            if explain:
+                with tf.variable_scope("exp"):
+                    # Upscaling (Translated) convolutions
+                    tconv5 = slim.conv2d_transpose(conv5, 256, [3,3], stride=2, scope="tconv5")
+                    tconv4 = slim.conv2d_transpose(conv5, 128, [3,3], stride=2, scope="tconv4")
+                    tconv3 = slim.conv2d_transpose(conv5, 64 , [3,3], stride=2, scope="tconv3")
+                    tconv2 = slim.conv2d_transpose(conv5, 32 , [5,5], stride=2, scope="tconv2")
+                    tconv1 = slim.conv2d_transpose(conv5, 16 , [7,7], stride=2, scope="tconv1")
+
+                    # Explainability Masks
+                    mask4  = slim.conv2d(tconv4, num_source * 2, [3,3], stride=1, 
+                            normalizer_fn=None, activation_fn=None, scope="mask4")
+                    mask3  = slim.conv2d(tconv3, num_source * 2, [3,3], stride=1, 
+                            normalizer_fn=None, activation_fn=None, scope="mask3")
+                    mask2  = slim.conv2d(tconv2, num_source * 2, [5,5], stride=1, 
+                            normalizer_fn=None, activation_fn=None, scope="mask2")
+                    mask1  = slim.conv2d(tconv1, num_source * 2, [7,7], stride=1, 
+                            normalizer_fn=None, activation_fn=None, scope="mask1")
+            else:
+                mask4 = None
+                mask3 = None
+                mask2 = None
+                mask1 = None
+
+            end_points = slim.convert_collection_to_dict(end_points_collection)
+
+            return pose_final, [mask1,mask2,mask3,mask4], end_points
                 
 
 def depth_net(img,is_training=True):
@@ -63,7 +97,7 @@ def depth_net(img,is_training=True):
                 weights_regularizer=slim.l2_regularizer(0.05),
                 activation_fn=tf.nn.relu):
 
-            # Downscaling CONVolutions
+            # Downscaling Convolutions
             conv1a = slim.conv2d(img    ,32 ,[7,7],stride=2,scope="conv1a") # downscaling
             conv1b = slim.conv2d(conv1a,32 ,[7,7],stride=1,scope="conv1b")
             conv2a = slim.conv2d(conv1b,64 ,[5,5],stride=2,scope="conv2a") # downscaling
@@ -79,55 +113,55 @@ def depth_net(img,is_training=True):
             conv7a = slim.conv2d(conv6b,512,[3,3],stride=2,scope="conv7a") # downscaling
             conv7b = slim.conv2d(conv7a,512,[3,3],stride=1,scope="conv7b")
 
-            # Upscaling CONVolutions
-            tcont7a = slim.conv2d_transpose(conv7b,512,[3,3],stride=2,scope="tcont7") # upscaling
-            tcont7a = tf.concat([tcont7a,conv6b],axis=3)
-            tcont7b = slim.conv2d(tcont7a,512,[3,3],stride=1,scope="tcont7b")
+            # Upscaling (Translated) Convolutions
+            tconv7a = slim.conv2d_transpose(conv7b,512,[3,3],stride=2,scope="tconv7") # upscaling
+            tconv7a = tf.concat([tconv7a,conv6b],axis=3)
+            tconv7b = slim.conv2d(tconv7a,512,[3,3],stride=1,scope="tconv7b")
 
-            tcont6a = slim.conv2d_transpose(tcont7b,512,[3,3],stride=2,scope="tcont6") # upscaling
-            tcont6a = tf.concat([tcont6a,conv5b],axis=3)
-            tcont6b = slim.conv2d(tcont6a,512,[3,3],stride=1,scope="tcont6b")
+            tconv6a = slim.conv2d_transpose(tconv7b,512,[3,3],stride=2,scope="tconv6") # upscaling
+            tconv6a = tf.concat([tconv6a,conv5b],axis=3)
+            tconv6b = slim.conv2d(tconv6a,512,[3,3],stride=1,scope="tconv6b")
 
-            tcont5a = slim.conv2d_transpose(tcont6b,256,[3,3],stride=2,scope="tcont5") # upscaling
-            tcont5a = tf.concat([tcont5a,conv4b],axis=3)
-            tcont5b = slim.conv2d(tcont5a,256,[3,3],stride=1,scope="tcont5b")
+            tconv5a = slim.conv2d_transpose(tconv6b,256,[3,3],stride=2,scope="tconv5") # upscaling
+            tconv5a = tf.concat([tconv5a,conv4b],axis=3)
+            tconv5b = slim.conv2d(tconv5a,256,[3,3],stride=1,scope="tconv5b")
 
-            tcont4a = slim.conv2d_transpose(tcont5b,128,[3,3],stride=2,scope="tcont4") # upscaling
-            tcont4a = tf.concat([tcont4a,conv3b],axis=3)
-            tcont4b = slim.conv2d(tcont4a,128,[3,3],stride=1,scope="tcont4b")
+            tconv4a = slim.conv2d_transpose(tconv5b,128,[3,3],stride=2,scope="tconv4") # upscaling
+            tconv4a = tf.concat([tconv4a,conv3b],axis=3)
+            tconv4b = slim.conv2d(tconv4a,128,[3,3],stride=1,scope="tconv4b")
 
             # predicting
-            disp4 = MIN_DISP + DISP_SCALING * slim.conv2d(tcont4b,1,[3,3],stride=1,
+            disp4 = MIN_DISP + DISP_SCALING * slim.conv2d(tconv4b,1,[3,3],stride=1,
                     activation_fn=tf.sigmoid,normalizer_fn=None,scope="disp4")
             # upscaling prediction
             disp4_up = tf.image.resize_bilinear(disp4,[np.int(H/4),np.int(W/4)]) 
 
-            tcont3a = slim.conv2d_transpose(tcont4b,64,[3,3],stride=2,scope="tcont3") # upscaling
-            tcont3a = tf.concat([tcont3a,conv2b,disp4_up],axis=3)
-            tcont3b = slim.conv2d(tcont3a,64,[3,3],stride=1,scope="tcont3b")
+            tconv3a = slim.conv2d_transpose(tconv4b,64,[3,3],stride=2,scope="tconv3") # upscaling
+            tconv3a = tf.concat([tconv3a,conv2b,disp4_up],axis=3)
+            tconv3b = slim.conv2d(tconv3a,64,[3,3],stride=1,scope="tconv3b")
 
             # predicting
-            disp3 = MIN_DISP + DISP_SCALING * slim.conv2d(tcont3b,1,[3,3],stride=1,
+            disp3 = MIN_DISP + DISP_SCALING * slim.conv2d(tconv3b,1,[3,3],stride=1,
                     activation_fn=tf.sigmoid,normalizer_fn=None,scope="disp3")
             # upscaling prediction
             disp3_up = tf.image.resize_bilinear(disp3,[np.int(H/2),np.int(W/2)]) 
 
-            tcont2a = slim.conv2d_transpose(tcont3b,32,[3,3],stride=2,scope="tcont2") # upscaling
-            tcont2a = tf.concat([tcont2a,conv1b,disp3_up],axis=3)
-            tcont2b = slim.conv2d(tcont2a,32,[3,3],stride=1,scope="tcont2b")
+            tconv2a = slim.conv2d_transpose(tconv3b,32,[3,3],stride=2,scope="tconv2") # upscaling
+            tconv2a = tf.concat([tconv2a,conv1b,disp3_up],axis=3)
+            tconv2b = slim.conv2d(tconv2a,32,[3,3],stride=1,scope="tconv2b")
 
             # predicting
-            disp2 = MIN_DISP + DISP_SCALING * slim.conv2d(tcont2b,1,[3,3],stride=1,
+            disp2 = MIN_DISP + DISP_SCALING * slim.conv2d(tconv2b,1,[3,3],stride=1,
                     activation_fn=tf.sigmoid,normalizer_fn=None,scope="disp2")
             # upscaling prediction
             disp2_up = tf.image.resize_bilinear(disp2,[H,W]) 
 
-            tcont1a = slim.conv2d_transpose(tcont2b,16,[3,3],stride=2,scope="tcont1") # upscaling
-            tcont1a = tf.concat([tcont1a,disp2_up],axis=3)
-            tcont1b = slim.conv2d(tcont1a,16,[3,3],stride=1,scope="tcont1b")
+            tconv1a = slim.conv2d_transpose(tconv2b,16,[3,3],stride=2,scope="tconv1") # upscaling
+            tconv1a = tf.concat([tconv1a,disp2_up],axis=3)
+            tconv1b = slim.conv2d(tconv1a,16,[3,3],stride=1,scope="tconv1b")
 
             # predicting
-            disp1 = MIN_DISP + DISP_SCALING * slim.conv2d(tcont1b,1,[3,3],stride=1,
+            disp1 = MIN_DISP + DISP_SCALING * slim.conv2d(tconv1b,1,[3,3],stride=1,
                     activation_fn=tf.sigmoid,normalizer_fn=None,scope="disp1")
 
             end_points = utils.convert_collection_to_dict(end_points_collection)
