@@ -35,7 +35,7 @@ class DataLoader():
         self.steps_per_epoch = int(len(img_paths//self.batch_size))
 
         # Load imgs
-        tf.RandomShuffleQueue
+        tf.data.
 
     def format_file_list(self, data_root, split):
         """
