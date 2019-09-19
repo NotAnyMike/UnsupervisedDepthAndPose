@@ -55,16 +55,16 @@ class DataLoader():
         """
         Reads the jpe image as well as the intrinsic matrix file
         """
-        img_str = tf.read_file(tf.strings.join([self.dataset_dir,subfolder,file+'.jpg'],'/'))
-        intrinsics = tf.read_file(tf.strings.join([self.dataset_dir,subfolder,file+'_cam.txt'],'/'))
+        img_str = tf.io.read_file(tf.strings.join([self.dataset_dir,subfolder,file+'.jpg'],'/'))
+        intrinsics = tf.io.read_file(tf.strings.join([self.dataset_dir,subfolder,file+'_cam.txt'],'/'))
 
         intrinsics = tf.string_split([intrinsics],',').values
-        intrinsics = tf.string_to_number(intrinsics)
+        intrinsics = tf.strings.to_number(intrinsics)
         intrinsics = tf.reshape(intrinsics, [3,3])
 
         img = tf.image.decode_jpeg(img_str,channels=3)
         img = tf.image.convert_image_dtype(img, tf.float32)
-        img = tf.image.resize_images(img, [128, 1248])
+        img = tf.image.resize(img, [128, 1248])
 
         return img,intrinsics,[subfolder,file]
 
@@ -138,14 +138,14 @@ class DataLoader():
 
         # Random scaling
         def random_scaling(img, intrinsics):
-            scaling = tf.random_uniform([2], 1, 1.15)
+            scaling = tf.random.uniform([2], 1, 1.15)
             x_scaling = scaling[0]
             y_scaling = scaling[1]
 
             new_h = tf.cast(img_height * y_scaling, dtype=tf.int32)
             new_w = tf.cast(img_width  * x_scaling, dtype=tf.int32)
 
-            img = tf.image.resize_images(img,[new_h,new_w])
+            img = tf.image.resize(img,[new_h,new_w])
 
             intrinsics[0*3+0] *= x_scaling # fx
             intrinsics[1*3+1] *= y_scaling # fy
@@ -160,8 +160,8 @@ class DataLoader():
             new_h = tf.shape(img)[0]
             new_w = tf.shape(img)[1]
 
-            offset_y = tf.random_uniform([1], 0, new_h - img_height + 1, dtype=tf.int32)[0]
-            offset_x = tf.random_uniform([1], 0, new_w - img_width  + 1, dtype=tf.int32)[0]
+            offset_y = tf.random.uniform([1], 0, new_h - img_height + 1, dtype=tf.int32)[0]
+            offset_x = tf.random.uniform([1], 0, new_w - img_width  + 1, dtype=tf.int32)[0]
 
             img = tf.image.crop_to_bounding_box(
                 img, offset_y, offset_x, img_height, img_width)
