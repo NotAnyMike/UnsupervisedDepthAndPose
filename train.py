@@ -28,6 +28,8 @@ parser.add_argument('--max_steps', default=2e4, type=int,
         help="Max number of steps to train for")
 parser.add_argument('--summary_freq', default=100, type=int,
         help="Frequency of the summary in number of interations")
+parser.add_argument('--num_parallel', default=100, type=int,
+        help="Number of parallel process in CPU (~ number of CPU cores)")
 parser.add_argument('--save_model_freq', default=5_000, type=int,
         help="Number of interations until saving the model again \
                 (will overwrite last model saved)")

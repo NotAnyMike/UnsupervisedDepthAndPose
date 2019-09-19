@@ -5,21 +5,25 @@ from tensorflow.contrib.layers.python.layers import utils
 MIN_DISP = 0.01
 DISP_SCALING = 10
 
-def pos_exp_net(img1,img2,img3,explain=True,is_training=True):
+def pos_exp_net(target,sources,num_sources,explain=True,is_training=True):
     """
     This function creates the graph for the pose and explainability networks
 
-    input:  3 consecutive frames, whether or not is training
+    input:  3 consecutive frames (2 source, 1 targets), whether or not is training
     output: The mask of objects to ignore and the pose 6 Degrees of
             freedom (DoF) plus all the layers
-    """
-    imgs = tf.concat([img1,img2,img3],axis=3)
-    H = inputs.get_shape()[1].value
-    W = inputs.get_shape()[2].value
 
-    # TODO Understand what this is exactly
-    # The number of contiguous frames or num of stack of frames?
-    num_source = int(src_image_stack.get_shape()[3].value//3)
+    parameters
+    ---
+
+    target: tensor [N,W,H,3]
+    sources: tensor [N,W,H,3*num_source]
+    num_sources: number of sources used
+    explain: whether or not create a exaplainability mask
+    is_training: whether or not is training
+    """
+    inputs = tf.concat([target,sources],axis=3)
+    _,H,W,_ = tf.shape(inputs)
 
     with tf.variable_scope("pos_exp_net") as sc:
         end_points_collection = sc.original_name_scope + '_end_points'
@@ -41,13 +45,13 @@ def pos_exp_net(img1,img2,img3,explain=True,is_training=True):
 
                 # predicting the 6DoF for each frame
                 # TODO is this per stack of frames? or per frame?
-                pose_pred = slim.conv2d(conv7, 6*num_source , [1,1], stride=1,
+                poses_pred = slim.conv2d(conv7, 6*num_source , [1,1], stride=1,
                         normalizer_fn=None, activation_fn=None, scope='pose_pred')
-                pose_avg  = tf.reduce_mean(pose_pred,[1,2])
+                poses_avg  = tf.reduce_mean(pose_pred,[1,2])
 
                 # Empirically the authors found that scaling by a small constant
                 # facilitates training.
-                pose_final = 0.01 * tf.reshape(pose_avg, [-1, num_source, 6])
+                poses_final = 0.01 * tf.reshape(pose_avg, [-1, num_source, 6])
 
             # Exp mask specific layers
             if explain:
@@ -76,10 +80,10 @@ def pos_exp_net(img1,img2,img3,explain=True,is_training=True):
 
             end_points = slim.convert_collection_to_dict(end_points_collection)
 
-            return pose_final, [mask1,mask2,mask3,mask4], end_points
+    return poses_final, [mask1,mask2,mask3,mask4], end_points
                 
 
-def depth_net(img,is_training=True):
+def depth_net(target,is_training=True):
     """
     This function creates the network in charge of estimating the depth.
     This architecture is a simple convolution-deconvolution network
@@ -87,8 +91,8 @@ def depth_net(img,is_training=True):
     input: single frame, whether is trainig or not
     output: depth for every pixel (WxH)
     """
-    H = img.get_shape()[1].value
-    W = img.get_shape()[2].value
+    H = target.get_shape()[1].value
+    W = target.get_shape()[2].value
 
     with tf.scope("depth_net") as sc:
         end_points_collection = sc.original_name_scope + '_end_points'
@@ -98,7 +102,7 @@ def depth_net(img,is_training=True):
                 activation_fn=tf.nn.relu):
 
             # Downscaling Convolutions
-            conv1a = slim.conv2d(img    ,32 ,[7,7],stride=2,scope="conv1a") # downscaling
+            conv1a = slim.conv2d(target,32 ,[7,7],stride=2,scope="conv1a") # downscaling
             conv1b = slim.conv2d(conv1a,32 ,[7,7],stride=1,scope="conv1b")
             conv2a = slim.conv2d(conv1b,64 ,[5,5],stride=2,scope="conv2a") # downscaling
             conv2b = slim.conv2d(conv2a,64 ,[5,5],stride=1,scope="conv2b")
