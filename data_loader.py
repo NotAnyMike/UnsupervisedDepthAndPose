@@ -166,10 +166,9 @@ class DataLoader():
 
         # Random cropping
         def random_cropping(img,intrinsics):
-            #new_h, new_w,_ = img.get_shape()
-            new_h,new_w,_ = img.get_shape().as_list()
-            #new_h = tf.shape(img)[0]
-            #new_w = tf.shape(img)[1]
+            #new_h,new_w,_ = img.get_shape().as_list()
+            new_h = tf.shape(img)[0]
+            new_w = tf.shape(img)[1]
 
             offset_y = tf.random.uniform([1], 0, new_h - img_height + 1, dtype=tf.int32)[0]
             offset_x = tf.random.uniform([1], 0, new_w - img_width  + 1, dtype=tf.int32)[0]

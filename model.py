@@ -112,9 +112,7 @@ class Model():
             exp_mask_stack_all = []
 
             _,height,width,_ = target.get_shape().as_list()
-            total_channels = tf.shape(sources)[-1]
-            print(target.shape)
-            print(height)
+            total_channels = sources.get_shape().as_list()[-1]
 
             # For each scale
             for scale in range(NUM_SCALES):

@@ -17,10 +17,8 @@ def projective_inverse_warp(source,depth,pose,intrinsics,batch_size):
         Source image inverse warped to the target image plane [batch, height_t,
         width_t, channels] (dimension is the same as source)
     """
-    #batch,height,width,_ = tf.shape(source)
-    #batch, height, width, _ = source.get_shape().as_list()
-    height = tf.shape(source)[1]
-    width  = tf.shape(source)[2]
+    _,height,width,_ = source.get_shape().as_list()
+
     pose = pose2mat(pose,batch_size) # Transform 6DoF to Transformation matrix
     pixel_coords = meshgrid(batch_size, height, width) # Get pixel coords
 
@@ -53,8 +51,6 @@ def pose2mat(pose,batch_size):
     Returns:
       A transformation matrix -- [B, 4, 4]
     """
-    #batch_size, _ = 4,0#pose.get_shape().as_list()
-    #batch_size = tf.shape(pose)[0]
     translation = tf.slice(pose, [0, 0], [-1, 3])
     translation = tf.expand_dims(translation, -1)
     rx = tf.slice(pose, [0, 3], [-1, 1])
@@ -157,10 +153,7 @@ def pixel2cam(depth, pixel_coords, intrinsics, batch_size, is_homogeneous=True):
     Coords in the camera frame [batch, 3 (4 if homogeneous), height, width]
     taken from Zhou et al.
     """
-    #batch, height, width = tf.shape(depth)
-    #batch = 4
-    height = tf.shape(depth)[1]
-    width  = tf.shape(depth)[2]
+    _, height, width = depth.get_shape().as_list()
     depth = tf.reshape(depth, [batch_size, 1, -1])
     pixel_coords = tf.reshape(pixel_coords, [batch_size, 3, -1])
     cam_coords = tf.matmul(tf.matrix_inverse(intrinsics), pixel_coords) * depth
@@ -178,10 +171,7 @@ def cam2pixel(cam_coords, proj, batch_size):
     Returns:
     Pixel coordinates projected from the camera frame [batch, height, width, 2]
     """
-    #batch, _, height, width = tf.shape(cam_coords)
-    #batch = 4
-    height=tf.shape(cam_coords)[2]
-    width =tf.shape(cam_coords)[3]
+    _, _, height, width = cam_coords.get_shape().as_list()
 
     cam_coords = tf.reshape(cam_coords, [batch_size, 4, -1])
     unnormalized_pixel_coords = tf.matmul(proj, cam_coords)
@@ -218,15 +208,10 @@ def bilinear_sampler(imgs, coords):
 
     with tf.name_scope('image_sampling'):
         coords_x, coords_y = tf.split(coords, [1, 1], axis=3)
-        inp_size = tf.shape(imgs)#imgs.get_shape()
-        print(inp_size)
+        inp_size = imgs.get_shape().as_list()
         coord_size = tf.shape(coords)#coords.get_shape()
-        #out_size   = tf.shape(coords)#coords.get_shape().as_list()
-        out_size = []
-        out_size.append(tf.shape(coords)[0])
-        out_size.append(tf.shape(coords)[1])
-        out_size.append(tf.shape(coords)[2])
-        out_size.append(tf.shape(imgs)[3])#imgs.get_shape().as_list()[3]
+        out_size   = coords.get_shape().as_list()
+        out_size[3] = imgs.get_shape().as_list()[3]
 
         coords_x = tf.cast(coords_x, 'float32')
         coords_y = tf.cast(coords_y, 'float32')
