@@ -1,3 +1,5 @@
+from pdb import set_trace
+
 import os
 import random
 import tensorflow as tf
@@ -36,20 +38,28 @@ class DataLoader():
         going to use
         """
 
+        with open(os.path.join(self.dataset_dir,split+".txt")) as f:
+            self.total_imgs = len(f.readlines())
+            self.steps_per_epoch = int(self.total_imgs // self.batch_size)
+
         # f,i,d stands for Frame, Intrinsics, Data
         imgs = tf.data.TextLineDataset(os.path.join(self.dataset_dir,split+".txt"))
+        # A perfect shuffle has the same lenght as the whole data 
+        imgs = imgs.shuffle(self.total_imgs, seed=self.seed) 
         imgs = imgs.map(lambda string: tf.string_split([string]).values)
-        imgs = imgs.shuffle(100000000, seed=self.seed) # Big enough to cover all data points
         imgs = imgs.map(lambda d : self._parse_fn(d[0],d[1]), num_parallel_calls=self.num_parallel)
         imgs = imgs.map(lambda f,i,d : self._separate_fn(f,i,d), num_parallel_calls=self.num_parallel)
         imgs = imgs.map(lambda f,i,d : self._data_augmentation(f,i,d), num_parallel_calls=self.num_parallel)
         imgs = imgs.map(lambda f,i,d : self._scale_intrinsics_fn(f,i,d), num_parallel_calls=self.num_parallel)
         imgs = imgs.map(lambda f,i,d : self._separate_target_fn(f,i,d), num_parallel_calls=self.num_parallel)
         imgs = imgs.batch(self.batch_size)
+        imgs = imgs.prefetch(1)
 
-        iterator = imgs.make_initializable_iterator()
-
-        return iterator
+        if tf.executing_eagerly():
+            return imgs
+        else:
+            iterator = imgs.make_initializable_iterator()
+            return iterator
 
     def _parse_fn(self,subfolder,file):
         """
@@ -157,8 +167,9 @@ class DataLoader():
         # Random cropping
         def random_cropping(img,intrinsics):
             #new_h, new_w,_ = img.get_shape()
-            new_h = tf.shape(img)[0]
-            new_w = tf.shape(img)[1]
+            new_h,new_w,_ = img.get_shape().as_list()
+            #new_h = tf.shape(img)[0]
+            #new_w = tf.shape(img)[1]
 
             offset_y = tf.random.uniform([1], 0, new_h - img_height + 1, dtype=tf.int32)[0]
             offset_x = tf.random.uniform([1], 0, new_w - img_width  + 1, dtype=tf.int32)[0]
