@@ -52,7 +52,8 @@ class DataLoader():
         imgs = imgs.map(lambda f,i,d : self._data_augmentation(f,i,d), num_parallel_calls=self.num_parallel)
         imgs = imgs.map(lambda f,i,d : self._scale_intrinsics_fn(f,i,d), num_parallel_calls=self.num_parallel)
         imgs = imgs.map(lambda f,i,d : self._separate_target_fn(f,i,d), num_parallel_calls=self.num_parallel)
-        imgs = imgs.batch(self.batch_size)
+        imgs = imgs.batch(self.batch_size,drop_remainder=True)
+        imgs = imgs.repeat()
         imgs = imgs.prefetch(1)
 
         if tf.executing_eagerly():

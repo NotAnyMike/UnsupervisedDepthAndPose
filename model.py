@@ -267,7 +267,6 @@ class Model():
         tf.summary.histogram("ry", self.poses[:,:,4])
         tf.summary.histogram("rz", self.poses[:,:,5])
 
-
     def train(self):
         self._build_graphs()
         self._collect_summaries()
@@ -319,6 +318,7 @@ class Model():
                 self.saver.restore(sess, checkpoint)
             start_time = time.time()
 
+            sess.run(self.dataset.initializer)
             for step in range(1, int(self.max_steps)):
                 fetches = {
                     "train": self.train_op,
@@ -331,7 +331,6 @@ class Model():
                     #fetches["summary"] = sv.summary_op
                     fetches["summary"] = summary_op
 
-                sess.run(self.dataset.initializer)
                 results = sess.run(fetches)
                 gs = results["global_step"]
 
@@ -417,7 +416,11 @@ class Model():
 
         return depths, input_raw, depth_end_points
 
-    def infere_depth(self,img_path,checkpoint_model):
+    def infere_depth(self,
+            img_paths,
+            checkpoint_model,
+            img_height = 128,
+            img_width  = 416):
         """
         Args:
             images_location: list of the files to load, all images have to have
@@ -425,11 +428,13 @@ class Model():
         Returns: depths for different scales specified in training
         """
         # Load images and get height,width
-        img_height = 128
-        img_width  = 416
-        img = pil.open(img_path)
-        img = img.resize((img_width, img_height), pil.ANTIALIAS)
-        img = np.array(img)
+        self.batch_size = len(img_paths)
+        imgs = []
+        for img_path in img_paths:
+            img = pil.open(img_path)
+            img = img.resize((img_width, img_height), pil.ANTIALIAS)
+            img = np.array(img)
+            imgs.append(img)
 
         # Build depth test graph
         depths, input_ph, depth_end_points = \
@@ -446,7 +451,7 @@ class Model():
             saver.restore(sess,checkpoint_model)
 
             # Predict
-            feed_dict = {input_ph:img[None,:,:,:]}
+            feed_dict = {input_ph:imgs}
             fetches = [depths]
             pred = sess.run(fetches,feed_dict=feed_dict)
 

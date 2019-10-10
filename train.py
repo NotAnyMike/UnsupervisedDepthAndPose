@@ -34,7 +34,7 @@ parser.add_argument('--save_model_freq', default=5_000, type=int,
 
 # Hyper-parameters
 parser.add_argument('--learning_rate', '-lr', default=2e-4, type=float,
-        help="Learning rate for the model, default 0.004")
+        help="Learning rate for the model, default 0.002")
 parser.add_argument('--beta1', default=0.9, type=float,
         help="Momentum weight for Adam, default 0.9")
 
