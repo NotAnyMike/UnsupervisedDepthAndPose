@@ -8,9 +8,9 @@ The objective of this repository was to replicate the original paper in order to
 
 Some of the outputs from the model:
 
-| ![2011_09_26_drive_0005_sync_02](/HDD/Documents/UnsupervisedDepthAndPose/misc/2011_09_26_drive_0005_sync_02.gif) | ![Sequence 21](/HDD/Documents/UnsupervisedDepthAndPose/misc/sequences_21.gif) |
-| ------------------------------------------------------------ | ------------------------------------------------------------ |
-| ![Sequence 06](/HDD/Documents/UnsupervisedDepthAndPose/misc/sequences_06.gif) | ![Sequence 07](/HDD/Documents/UnsupervisedDepthAndPose/misc/sequences_07.gif) |
+| ![2011_09_26_drive_0005_sync_02](misc/2011_09_26_drive_0005_sync_02.gif) | ![Sequence 21](misc/sequences_21.gif) |
+| ------------------------------------------------------------ | ------------------------------------- |
+| ![Sequence 06](misc/sequences_06.gif)                        | ![Sequence 07](misc/sequences_07.gif) |
 
 Those results are only preliminary. I haven't evaluated and compared the results to the original paper yet.
 
