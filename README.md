@@ -4,7 +4,7 @@ Implementation of Unsupervised Learning of Depth and Ego-Motion from Video imple
 
 The objective of this repository was to replicate the original paper in order to practice and learn, not for research purposes. This model was the first one using this method. Currently there are several improved models.
 
-## Outputs
+## Preliminary Outputs
 
 Some of the outputs from the model:
 
@@ -26,7 +26,28 @@ Some functions have been taken from the original paper without any change.
 
 ## Results
 
-TBC
+### Depth
+
+#### Evaluation 
+
+In order to evaluate the model, first generate the predictions for the files from the kitti eigen split you find [here](data/kitti/test_files_eigen.txt). To generate it you can use the notebook for that purpose. One you can the predictions run
+
+```
+python kitti_eval/eval_depth.py --kitti_dir /HDD/Downloads/Datasets/raw_data_downloader/ --pred_file=kitti_eval/kitti_eigen_depth_predictions.npy
+```
+
+as in the original code.
+
+#### Metrics
+
+| Model               | Absolute Relative Error | Square Relative Error |   RMS   | Log RMS | d1_all |   a1   |   a2   |   a3   |
+| :------------------ | :---------------------: | :-------------------: | :-----: | :-----: | :----: | :----: | :----: | :----: |
+| SfMLearner Original |         0.1978          |        1.8363         | 6.5645  | 0.2750  | 0.000  | 0.7176 | 0.9010 | 0.9606 |
+| This model          |         0.4614          |        5.4931         | 12.3904 | 0.6104  | 0.000  | 0.3036 | 0.5573 | 0.7446 |
+
+### Pose
+
+TODO
 
 ## Instructions
 
